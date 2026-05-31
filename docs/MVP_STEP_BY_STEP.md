@@ -95,7 +95,7 @@ alias pg="npx prisma generate"
 Шаг 0 — Git (в /home/dima/home/focus_champ/ — родительской!):
   4. git init && git add .      ← единый репозиторий: код + документация
 
-Шаг 1.2 (в /home/dima/home/focus_champ/focus_champ/):
+Шаг 1.2 (в /home/dima/home/focus_champ/ — корень = приложение):
   5. pnpm install               ← базовые зависимости Next.js
   6. pnpm add prisma ...        ← MVP-зависимости
 ```
@@ -169,7 +169,8 @@ cd focus_champ
 
 > ⚠️ **Важно**: `create-next-app` создаёт свой `.git` внутри папки приложения. Перед инициализацией корневого репо — **удали внутренний**:
 > ```bash
-> rm -rf /home/dima/home/focus_champ/focus_champ/.git
+> rm -rf /home/dima/home/focus_champ/focus_champ/.git 2>/dev/null
+> # После переноса приложения в корень этот шаг не нужен — просто убедись, что нет вложенного .git/
 > ```
 
 ```
@@ -208,6 +209,8 @@ git push -u origin main
 
 ### Шаг 1.2 — Установка зависимостей
 
+> **Выполняется в `/home/dima/home/focus_champ/focus_champ/` (папка приложения, где `package.json`).**
+>
 > **Что делаем**: устанавливаем все библиотеки, которые понадобятся в MVP.
 > **Зачем**: чтобы не прерываться потом на `pnpm add ...` — ставим всё сразу.
 > **Почему именно эти пакеты**: Prisma (ORM для БД), NextAuth (аутентификация), Zustand (лёгкий стейт-менеджер), TanStack Query (кеширование серверных данных), shadcn/ui (готовые UI-компоненты), zod (валидация форм), Uploadthing (загрузка скриншотов), Gemini SDK (AI-анализ).
