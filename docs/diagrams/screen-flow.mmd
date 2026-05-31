@@ -1,0 +1,98 @@
+---
+title: Focus Champ — Пользовательский поток экранов (MVP)
+---
+flowchart TD
+    %% ═══════════════════════════════════════
+    %% АВТОРИЗАЦИЯ (зелёный)
+    %% ═══════════════════════════════════════
+    landing["🏠 Лендинг"]
+
+    register["📝 Регистрация /register"]
+    login["🔑 Вход /login"]
+
+    landing -->|"Создать аккаунт"| register
+    landing -->|"Войти"| login
+
+    %% Ошибочные пути (красный пунктир)
+    register -.->|"❌ Ошибка валидации"| register
+    login -.->|"❌ Неверные данные"| login
+
+    %% ═══════════════════════════════════════
+    %% ДАШБОРД (синий)
+    %% ═══════════════════════════════════════
+    dashboard["📊 Дашборд /dashboard"]
+
+    register -->|"✅ Успешная регистрация"| dashboard
+    login -->|"✅ Успешный вход"| dashboard
+
+    %% Действия с дашборда (оранжевый — CTA)
+    createRoom["➕ Создать комнату /room/create"]
+    joinRoom["🔗 Присоединиться /room/join"]
+    profile["👤 Профиль /profile"]
+
+    dashboard --> createRoom
+    dashboard --> joinRoom
+    dashboard --> profile
+
+    %% ═══════════════════════════════════════
+    %% ИГРОВАЯ КОМНАТА (синий + оранжевый)
+    %% ═══════════════════════════════════════
+    roomPage["🎮 Комната /room/[id]\n(показан код приглашения)"]
+
+    createRoom -->|"Комната создана\n+ код приглашения"| roomPage
+    joinRoom -->|"Код введён верно"| roomPage
+
+    tasks["📋 Задачи дня"]
+    roomPage --> tasks
+
+    complete["✅ Отметить выполнение"]
+    tasks --> complete
+
+    verifCheck{"🔍 Требуется проверка?"}
+    complete --> verifCheck
+
+    upload["📤 Загрузить скриншот"]
+    aiAnalyze["🤖 AI-анализ скриншота"]
+
+    verifCheck -->|"Да"| upload
+    verifCheck -->|"Нет"| pointsNode
+    upload --> aiAnalyze
+
+    aiAnalyze -->|"✅ Подтверждено"| pointsNode
+    aiAnalyze -.->|"❌ Отклонено"| upload
+
+    pointsNode["⭐ Баллы начислены\n(реальное время)"]
+
+    eodCheck{"⌛ Конец дня?"}
+    pointsNode --> eodCheck
+
+    winner["🏆 Победитель объявлен!"]
+
+    eodCheck -->|"Да"| winner
+    eodCheck -->|"Нет"| tasks
+
+    %% ═══════════════════════════════════════
+    %% ПРОФИЛЬ / ВЫХОД
+    %% ═══════════════════════════════════════
+    logoutBtn["🚪 Выйти из системы"]
+    profile --> logoutBtn
+    logoutBtn -->|"Сессия завершена"| login
+
+    %% ═══════════════════════════════════════
+    %% ЦВЕТОВЫЕ СТИЛИ
+    %% ═══════════════════════════════════════
+    classDef authPage fill:#2ecc71,stroke:#27ae60,color:#fff,stroke-width:2px
+    classDef mainPage fill:#3498db,stroke:#2980b9,color:#fff,stroke-width:2px
+    classDef ctaAction fill:#e67e22,stroke:#d35400,color:#fff,stroke-width:2px
+    classDef resultNode fill:#f1c40f,stroke:#f39c12,color:#333,stroke-width:2px
+
+    class landing,register,login authPage
+    class dashboard,roomPage,tasks,profile,logoutBtn mainPage
+    class createRoom,joinRoom,complete,verifCheck,upload,aiAnalyze,pointsNode,eodCheck ctaAction
+    class winner resultNode
+
+    %% Красно-пунктирные рёбра для ошибочных путей
+    %% Индексы считаются от 0 в порядке объявления рёбер
+    linkStyle 2 stroke:#e74c3c,stroke-width:2px
+    linkStyle 3 stroke:#e74c3c,stroke-width:2px
+    linkStyle 18 stroke:#e74c3c,stroke-width:2px

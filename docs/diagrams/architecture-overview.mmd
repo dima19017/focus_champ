@@ -1,0 +1,54 @@
+flowchart TB
+    %% Внешние участники
+    User["👤 Пользователь<br/>(браузер)"]
+    Gemini["🧠 Google Gemini<br/>Vision API"]
+
+    %% ===== КЛИЕНТСКИЙ СЛОЙ =====
+    subgraph Client["КЛИЕНТСКИЙ СЛОЙ (Next.js)"]
+        RSC["🖥️ React Server Components"]
+        CC["⚛️ Client Components"]
+        Zustand["🗃️ Zustand<br/>(UI-состояние)"]
+        TQ["🔄 TanStack Query<br/>(кэш серверных данных)"]
+    end
+
+    %% ===== СЕРВЕРНЫЙ СЛОЙ Next.js =====
+    subgraph Server["СЕРВЕРНЫЙ СЛОЙ (Next.js)"]
+        API["📡 API Routes<br/>(REST)"]
+        NextAuth["🔐 Auth Middleware<br/>(NextAuth.js)"]
+        SSE["📡 SSE Routes<br/>(/api/sse)"]
+        Cron["⏰ Cron Jobs<br/>(Vercel Cron)"]
+    end
+
+    %% ===== СЕРВИСНЫЙ СЛОЙ =====
+    subgraph Services["СЕРВИСНЫЙ СЛОЙ"]
+        Prisma["🗄️ Prisma ORM<br/>(запросы к БД)"]
+        Vision["📸 Gemini Vision API<br/>(анализ скриншотов)"]
+        Upload["📦 Uploadthing /<br/>Vercel Blob<br/>(файловое хранилище)"]
+    end
+
+    %% ===== СЛОЙ ДАННЫХ =====
+    subgraph Data["СЛОЙ ДАННЫХ"]
+        PG[("🐘 PostgreSQL<br/>(Neon / Supabase)")]
+    end
+
+    %% Связи потоков данных
+    User -->|"HTTP-запросы"| API
+    User -->|"SSE-подписка<br/>(EventSource)"| SSE
+    User -->|"Прямая загрузка<br/>файлов"| Upload
+
+    Client -->|"HTTP/SSE"| Server
+
+    API --> Prisma
+    SSE --> Prisma
+    Cron --> Prisma
+    Prisma -->|"SQL-запросы"| PG
+
+    API --> Vision
+    Vision -->|"REST API<br/>(JSON-ответ)"| API
+    API --> Upload
+    Upload -->|"URL файла"| API
+
+    RSC -.->|"рендеринг"| CC
+    CC --> Zustand
+    CC --> TQ
+    TQ -->|"fetch / invalidate"| API

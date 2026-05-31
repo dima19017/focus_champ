@@ -1,0 +1,52 @@
+sequenceDiagram
+    actor User as 👤 Пользователь
+    participant Client as 🖥️ Клиент (Next.js)
+    participant Upload as 📦 Uploadthing
+    participant Server as 🖧 Сервер (API Routes)
+    participant Gemini as 🧠 Gemini Vision API
+    participant DB as 🐘 PostgreSQL
+    participant Room as 📡 SSE Комната
+
+    %% Шаг 1: Загрузка скриншота
+    User->>Client: Нажимает «Загрузить скриншот»
+    activate Client
+    Client->>Upload: POST /upload (изображение)
+    activate Upload
+    Upload-->>Client: ✅ URL загруженного файла
+    deactivate Upload
+
+    %% Шаг 2: Отправка на верификацию
+    Client->>Server: POST /api/verify<br/>{ imageUrl, taskId }
+    deactivate Client
+    activate Server
+
+    %% Шаг 3: Скачивание и отправка в Gemini
+    Server->>Upload: GET /download (изображение)
+    Upload-->>Server: 📸 Бинарные данные
+
+    Server->>Gemini: POST /analyze<br/>{ image, prompt: "Проверь выполнение задачи..." }
+    activate Gemini
+
+    Note over Gemini: Анализирует скриншот<br/>по структурированному промпту
+
+    Gemini-->>Server: ✅ JSON-ответ<br/>{ verified, confidence,<br/>extracted_data, reasoning }
+    deactivate Gemini
+
+    %% Шаг 4: Сохранение результатов
+    Server->>DB: INSERT INTO TaskSubmission<br/>{ imageUrl, verified, confidence, ... }
+    activate DB
+    DB-->>Server: ✅ Запись сохранена
+
+    Server->>DB: UPDATE DayScore<br/>SET points = points + X
+    DB-->>Server: ✅ Счёт обновлён
+    deactivate DB
+
+    %% Шаг 5: SSE-уведомление
+    Server->>Room: 📡 SSE broadcast<br/>{ event: "verification_complete",<br/>  taskId, verified, score }
+    activate Room
+    Room-->>Client: 📡 SSE-событие получено
+    deactivate Room
+
+    Note over Client: Обновляет UI:<br/>показывает ✅ верифицирован<br/>или ❌ отклонён
+
+    deactivate Server

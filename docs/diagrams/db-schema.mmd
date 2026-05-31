@@ -1,0 +1,117 @@
+%%{init: {
+  "theme": "default",
+  "themeVariables": {
+    "fontFamily": "Arial, sans-serif",
+    "primaryColor": "#dbeafe",
+    "primaryBorderColor": "#3b82f6",
+    "lineColor": "#6b7280"
+  }
+}}%%
+
+erDiagram
+    User ||--o{ Room : "создаёт"
+    User ||--o{ RoomMember : "является участником"
+    User ||--o{ TaskSubmission : "выполняет задания"
+    User ||--o{ DayWinner : "становится победителем"
+    User ||--o{ FriendRequest : "отправляет запрос"
+    User ||--o{ FriendRequest : "получает запрос"
+    User ||--o{ Friendship : "друг1"
+    User ||--o{ Friendship : "друг2"
+
+    Room ||--|{ Task : "содержит"
+    Room ||--o{ RoomMember : "включает"
+    Room ||--o{ CompetitionDay : "имеет дни"
+
+    Task ||--o{ TaskSubmission : "получает решения"
+
+    CompetitionDay ||--o{ DayScore : "содержит очки"
+    CompetitionDay ||--o{ TaskSubmission : "группирует"
+    CompetitionDay ||--o| DayWinner : "имеет победителя"
+
+    User {
+        int id PK
+        string username UK
+        string passwordHash
+        string displayName
+        string avatarUrl
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    Room {
+        int id PK
+        string name
+        string joinCode UK
+        int duration
+        string status
+        int creatorId FK
+        datetime createdAt
+        datetime endedAt
+    }
+
+    Task {
+        int id PK
+        int roomId FK
+        string title
+        int points
+        bool requiresVerification
+        string verificationType
+        int sortOrder
+        datetime createdAt
+    }
+
+    CompetitionDay {
+        int id PK
+        int roomId FK
+        int dayNumber
+        date date
+        string status
+        int winnerId FK
+    }
+
+    RoomMember {
+        int id PK
+        int roomId FK
+        int userId FK
+        datetime joinedAt
+    }
+
+    DayScore {
+        int id PK
+        int dayId FK
+        int userId FK
+        int totalPoints
+    }
+
+    TaskSubmission {
+        int id PK
+        int taskId FK
+        int userId FK
+        int dayId FK
+        string status
+        string proofUrl
+        string aiResponse
+        datetime createdAt
+        datetime reviewedAt
+    }
+
+    DayWinner {
+        int id PK
+        int dayId FK
+        int userId FK
+    }
+
+    FriendRequest {
+        int id PK
+        int fromUserId FK
+        int toUserId FK
+        string status
+        datetime createdAt
+    }
+
+    Friendship {
+        int id PK
+        int user1Id FK
+        int user2Id FK
+        datetime createdAt
+    }
