@@ -4,5 +4,4 @@ node_modules/
 .env.local
 .tmp/
 *.log
-
-/src/generated/prisma
+next-env.d.ts

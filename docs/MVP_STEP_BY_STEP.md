@@ -154,7 +154,7 @@ rmdir focus_champ
 
 > **После создания**: `pnpm` (v10+) блокирует build-скрипты. Создай `.npmrc` в корне проекта:
 > ```
-> onlyBuiltDependencies=sharp unrs-resolver msw
+> onlyBuiltDependencies=sharp unrs-resolver msw @prisma/engines msgpackr-extract prisma
 > ```
 > Если появляются новые ignored builds — дополняй строку через пробел.
 >
