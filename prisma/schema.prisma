@@ -1,0 +1,117 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  displayName  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships       RoomMember[]
+  taskSubmissions   TaskSubmission[]
+  createdRooms      Room[]         @relation("RoomCreator")
+  wonDays           DayWinner[]
+}
+
+model Room {
+  id        String     @id @default(cuid())
+  name      String
+  joinCode  String     @unique
+  status    String     @default("ACTIVE")
+  creatorId String
+  createdAt DateTime   @default(now())
+
+  creator User          @relation("RoomCreator", fields: [creatorId], references: [id])
+  tasks   Task[]
+  members RoomMember[]
+  days    CompetitionDay[]
+}
+
+model Task {
+  id                   String   @id @default(cuid())
+  roomId               String
+  title                String
+  points               Int
+  requiresVerification Boolean  @default(false)
+  sortOrder            Int      @default(0)
+  createdAt            DateTime @default(now())
+
+  room        Room             @relation(fields: [roomId], references: [id])
+  submissions TaskSubmission[]
+}
+
+model RoomMember {
+  id       String   @id @default(cuid())
+  roomId   String
+  userId   String
+  joinedAt DateTime @default(now())
+
+  room Room @relation(fields: [roomId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([roomId, userId])
+}
+
+model CompetitionDay {
+  id        String   @id @default(cuid())
+  roomId    String
+  dayNumber Int
+  date      DateTime @default(now())
+  status    String   @default("ACTIVE")
+  winnerId  String?
+
+  room      Room          @relation(fields: [roomId], references: [id])
+  winner    DayWinner?
+  scores    DayScore[]
+  submissions TaskSubmission[]
+
+  @@unique([roomId, dayNumber])
+}
+
+model DayScore {
+  id          String @id @default(cuid())
+  dayId       String
+  userId      String
+  totalPoints Int    @default(0)
+
+  day CompetitionDay @relation(fields: [dayId], references: [id])
+}
+
+model TaskSubmission {
+  id         String   @id @default(cuid())
+  taskId     String
+  userId     String
+  dayId      String
+  status     String   @default("PENDING")
+  proofUrl   String?
+  aiResponse Json?
+  createdAt  DateTime @default(now())
+  reviewedAt DateTime?
+
+  task Task          @relation(fields: [taskId], references: [id])
+  user User          @relation(fields: [userId], references: [id])
+  day  CompetitionDay @relation(fields: [dayId], references: [id])
+
+  @@unique([taskId, userId, dayId])
+}
+
+model DayWinner {
+  id     String @id @default(cuid())
+  dayId  String @unique
+  userId String
+
+  day  CompetitionDay @relation(fields: [dayId], references: [id])
+  user User           @relation(fields: [userId], references: [id])
+}

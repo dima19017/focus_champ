@@ -64,7 +64,7 @@ node -v > .nvmrc
 |-----|-----|-------------------|
 | Node.js | Управляется nvm (`~/.nvm/`) | Изолировано по версиям |
 | pnpm | Глобально (`/usr/local/bin/`) | Единственный глобальный пакет |
-| Зависимости проекта | `focus_champ/node_modules/` | Локально, удаляется вместе с папкой |
+| Зависимости проекта | `node_modules/` | Локально, удаляется вместе с папкой |
 | Prisma, Next.js CLI | `npx` / `pnpm exec` | Запускаются из `node_modules/.bin/` |
 
 ### Полезные алиасы (добавить в `~/.bashrc`)
@@ -73,9 +73,9 @@ node -v > .nvmrc
 alias pnd="pnpm run dev"
 alias pnb="pnpm run build"
 alias pnl="pnpm run lint"
-alias ps="npx prisma studio"
-alias pdp="npx prisma db push"
-alias pg="npx prisma generate"
+alias ps="proxychains4 npx prisma studio"
+alias pdp="proxychains4 npx prisma db push"
+alias pg="proxychains4 npx prisma generate"
 ```
 
 ---
@@ -115,7 +115,7 @@ npm config set https-proxy socks5h://user:pass@host:port
 npm config set strict-ssl false
 ```
 
-**⚠️ Важно**: `proxychains` не всегда корректно пробрасывает DNS для npm. Надёжнее настраивать прокси напрямую через `npm config`, а не через `proxychains4`.
+**⚠️ Важно**: `proxychains` не всегда корректно пробрасывает DNS для npm. Надёжнее настраивать прокси напрямую через `npm config`, а не через `proxychains4`. Но для **npx prisma** (TCP-подключение к БД) — `proxychains4` обязателен и работает.
 
 Если `create-next-app` зависает на `npm install` — **выбери ОДИН из вариантов** (не выполняй все подряд!):
 
@@ -141,21 +141,24 @@ npx create-next-app@latest focus_champ --typescript --tailwind --eslint --app --
 proxychains4 npx create-next-app@latest focus_champ \
   --typescript --tailwind --eslint --app --src-dir \
   --import-alias "@/*"
-cd focus_champ
+# create-next-app создаст папку focus_champ/ с проектом
+# Затем перенеси всё на уровень выше (best practice: приложение в корне репо):
+mv focus_champ/* .
+mv focus_champ/.[!.]* . 2>/dev/null
+rmdir focus_champ
 ```
 
 > **Ожидаемое время**: 3-10 минут в зависимости от сети. При использовании прокси `npm install` внутри `create-next-app` может занять до 15 минут — это нормально, пакеты скачиваются в `~/.npm/_cacache` (2+ ГБ), затем разархивируются в `node_modules/`. Если процесс завис намертво (>10 мин без движения диска) — см. [Настройка прокси](#настройка-прокси-если-используется) выше.
 
 **На вопрос `Would you like to use React Compiler?` → выбрать `No`** (React Compiler экспериментальный, для MVP не нужен — он автоматически мемоизирует компоненты, но может сломать неочевидные места).
 
-> **После создания**: `pnpm` (v10+) блокирует build-скрипты для безопасности. При первом `pnpm dev` или `pnpm install` будет ошибка `ERR_PNPM_IGNORED_BUILDS`. Нужно одобрить:
-> ```bash
-> # Добавить в package.json:
-> "pnpm": {
->   "onlyBuiltDependencies": ["sharp", "unrs-resolver"]
-> }
+> **После создания**: `pnpm` (v10+) блокирует build-скрипты. Создай `.npmrc` в корне проекта:
 > ```
-> Или интерактивно: `pnpm approve-builds` → Enter для каждого пакета.
+> onlyBuiltDependencies=sharp unrs-resolver msw
+> ```
+> Если появляются новые ignored builds — дополняй строку через пробел.
+>
+> **Важно**: файл `.npmrc` должен быть создан ДО `pnpm install` и ДО `shadcn init`, иначе оба упадут с `ERR_PNPM_IGNORED_BUILDS`.
 
 **Проверка**: `pnpm dev` → открывается `http://localhost:3000`
 
@@ -174,18 +177,18 @@ cd focus_champ
 > ```
 
 ```
-Структура репозитория:
-focus_champ/                    ← git root (здесь .git/)
+focus_champ/                    ← git root + приложение (всё в одном месте)
 ├── .gitignore
-├── PLAN.md, design.md, app_tasks.md
-├── docs/ (TECH_STACK, MVP, SCREENS, diagrams/)
-└── focus_champ/               ← Next.js app
-    ├── package.json, src/, ...
+├── package.json                ← Next.js
+├── src/                        ← код приложения
+├── PLAN.md                     ← документация
+├── docs/                       ← планы, схемы, MVP
+└── design.md                   ← дизайн-система
 ```
 
 ```bash
-# Перейти в родительскую папку
 cd /home/dima/home/focus_champ
+git init
 
 # .gitignore: исключаем артефакты, оставляем документацию
 cat > .gitignore << 'EOF'
@@ -209,7 +212,7 @@ git push -u origin main
 
 ### Шаг 1.2 — Установка зависимостей
 
-> **Выполняется в `/home/dima/home/focus_champ/focus_champ/` (папка приложения, где `package.json`).**
+> **Выполняется в `/home/dima/home/focus_champ/` (корень репозитория = папка приложения).**
 >
 > **Что делаем**: устанавливаем все библиотеки, которые понадобятся в MVP.
 > **Зачем**: чтобы не прерываться потом на `pnpm add ...` — ставим всё сразу.
@@ -217,14 +220,16 @@ git push -u origin main
 
 ```bash
 pnpm install
-pnpm add prisma @prisma/client next-auth@beta @auth/prisma-adapter
+pnpm add prisma @prisma/client @prisma/adapter-pg next-auth@beta @auth/prisma-adapter
 pnpm add zustand @tanstack/react-query
 pnpm add lucide-react class-variance-authority clsx tailwind-merge
 pnpm add zod react-hook-form @hookform/resolvers
 pnpm add uploadthing @uploadthing/react
 pnpm add @google/generative-ai
 pnpm add date-fns bcryptjs
-pnpm add -D prisma @types/node @types/bcryptjs
+pnpm add -D prisma @types/node
+pnpm approve-builds
+pnpm dev
 ```
 
 ### Шаг 1.3 — Инициализация shadcn/ui
@@ -235,10 +240,11 @@ pnpm add -D prisma @types/node @types/bcryptjs
 
 ```bash
 npx shadcn@latest init
-# Выбрать: Default, Slate, Yes (CSS variables)
-
-# Установить нужные компоненты:
-npx shadcn@latest add button card input label form dialog toast tabs separator badge avatar progress dropdown-menu
+# shadcn v4 — ответы:
+#   1. Select a component library → Radix
+#   2. Which preset? → Nova (Lucide иконки + Geist шрифт — позже заменим на Inter)
+#   (дальше будут ещё вопросы — см. ниже)
+npx shadcn@latest add button card input label form dialog sonner tabs separator badge avatar progress dropdown-menu
 ```
 
 **Проверка**: импортировать `Button` из `@/components/ui/button` — рендерится без ошибок.
@@ -255,14 +261,16 @@ npx shadcn@latest add button card input label form dialog toast tabs separator b
 ```env
 DATABASE_URL="postgresql://user:pass@host/dbname"
 NEXTAUTH_SECRET="openssl rand -base64 32"
-NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_URL="http://localhost:3000"   # или порт, на котором реально запущен dev (3001, 3002...)
 ```
 
 ```bash
 npx prisma init
 ```
 
-**Проверка**: `npx prisma db push` → нет ошибок подключения.
+> ⚠️ **Прокси**: Prisma подключается к БД по TCP. Все `npx prisma` команды — через `proxychains4`. Neon через прокси работает (проверено).
+
+**Проверка**: `proxychains4 npx prisma db push` → `"The database is already in sync"`.
 
 ### Шаг 1.5 — Prisma-схема (базовая)
 
@@ -279,7 +287,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -389,11 +396,11 @@ model DayWinner {
 ```
 
 ```bash
-npx prisma db push
-npx prisma generate
+proxychains4 npx prisma db push
+proxychains4 npx prisma generate
 ```
 
-**Проверка**: `npx prisma studio` → открывается веб-интерфейс, таблицы созданы.
+**Проверка**: `proxychains4 npx prisma studio` → открывается веб-интерфейс, таблицы созданы.
 
 ### Шаг 1.6 — Настройка NextAuth.js
 
@@ -404,10 +411,20 @@ npx prisma generate
 `src/lib/prisma.ts`:
 ```typescript
 import { PrismaClient } from "@prisma/client"
+import { PrismaPg } from "@prisma/adapter-pg"
+
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
-export const prisma = globalForPrisma.prisma || new PrismaClient()
+
+const createPrismaClient = () =>
+  new PrismaClient({
+    adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
+  })
+
+export const prisma = globalForPrisma.prisma || createPrismaClient()
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma
 ```
+
+> **Prisma v7**: требует явный adapter или `accelerateUrl`. Используем `@prisma/adapter-pg` для прямого подключения к PostgreSQL. Установить: `pnpm add @prisma/adapter-pg`.
 
 `src/lib/auth.ts`:
 ```typescript
@@ -443,32 +460,59 @@ import { handlers } from "@/lib/auth"
 export const { GET, POST } = handlers
 ```
 
-**Проверка**: `http://localhost:3000/api/auth/signin` — не 404.
+**Проверка**: `http://localhost:3001/api/auth/signin` — не 404.
 
 ### Шаг 1.7 — Цветовая схема (из design.md)
 
-> **Что делаем**: добавляем CSS-переменные из дизайн-системы в глобальные стили.
-> **Зачем**: чтобы все компоненты использовали одни и те же цвета. Поменяли переменную — поменялся весь интерфейс.
-> **Почему dark theme first**: приложение для вечернего использования (трекер сна, экранное время). Тёмная тема меньше напрягает глаза. Светлую тему можно добавить позже переключателем.
+> **Что делаем**: заменяем Nova-тему на нашу dark-first палитру из `design.md`.
+> **Зачем**: чтобы все компоненты shadcn/ui использовали наши цвета (`#0B1020`, `#7C4DFF`, `#22C55E`...) вместо стандартных.
+> **Почему dark-first**: приложение для вечернего использования — тёмная тема по умолчанию, без переключателя. `:root` = тёмная тема.
 
-`src/app/globals.css` — добавить CSS-переменные:
+`src/app/globals.css` — заменить содержимое:
+
 ```css
-:root {
-  --bg-primary: #0B1020;
-  --bg-secondary: #131B33;
-  --surface: #1A2444;
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-inter);
+}
+
+:root,
+.dark {
+  --background: #0B1020;
+  --foreground: #f1f5f9;
+  --card: #131B33;
+  --card-foreground: #f1f5f9;
+  --popover: #1A2444;
+  --popover-foreground: #f1f5f9;
   --primary: #7C4DFF;
-  --primary-hover: #9067FF;
-  --success: #22C55E;
-  --warning: #F59E0B;
-  --danger: #EF4444;
-  --gold: #FBBF24;
+  --primary-foreground: #ffffff;
+  --secondary: #1A2444;
+  --secondary-foreground: #94a3b8;
+  --muted: #1A2444;
+  --muted-foreground: #64748b;
+  --accent: #7C4DFF;
+  --accent-foreground: #ffffff;
+  --destructive: #EF4444;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: #7C4DFF;
+  --radius: 0.625rem;
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  body { @apply bg-background text-foreground; }
+  html { @apply font-sans; color-scheme: dark; }
 }
 ```
 
-Настроить shadcn/ui тему в `components.json` под эти цвета.
-
-**Проверка**: страница рендерится с тёмным фоном `#0B1020`.
+> **Объяснение**: `components.json` (`"cssVariables": true`) говорит shadcn использовать CSS-переменные для цветов. Мы переопределяем их под наш дизайн. `color-scheme: dark` говорит браузеру рисовать скроллбары и инпуты в тёмной теме.
 
 ### Шаг 1.8 — Базовая структура роутов
 
@@ -1004,15 +1048,15 @@ vercel
 
 | Неделя | Шаг | Задача | Суть | Статус |
 |--------|-----|--------|------|--------|
-| 1 | 1.1 | Инициализация Next.js | Создание скелета приложения | ⬜ |
-| 1 | 0 | Git + GitHub | Единый репозиторий на всё | ⬜ |
-| 1 | 1.2 | Зависимости | Установка всех библиотек сразу | ⬜ |
-| 1 | 1.3 | shadcn/ui | Готовые UI-компоненты | ⬜ |
-| 1 | 1.4 | Prisma + PostgreSQL | Подключение к базе данных | ⬜ |
-| 1 | 1.5 | Prisma-схема | 8 таблиц: User, Room, Task, ... | ⬜ |
-| 1 | 1.6 | NextAuth.js | Вход по логину/паролю | ⬜ |
-| 1 | 1.7 | Цветовая схема | Dark theme, CSS-переменные | ⬜ |
-| 1 | 1.8 | Структура роутов | Файлы страниц-заглушек | ⬜ |
+| 1 | 1.1 | Инициализация Next.js | Создание скелета приложения | ✅ |
+| 1 | 0 | Git + GitHub | Единый репозиторий на всё | ✅ |
+| 1 | 1.2 | Зависимости | Установка всех библиотек сразу | ✅ |
+| 1 | 1.3 | shadcn/ui | Готовые UI-компоненты | ✅ |
+| 1 | 1.4 | Prisma + PostgreSQL | Подключение к базе данных | ✅ |
+| 1 | 1.5 | Prisma-схема | 8 таблиц: User, Room, Task, ... | ✅ |
+| 1 | 1.6 | NextAuth.js | Вход по логину/паролю | ✅ |
+| 1 | 1.7 | Цветовая схема | Dark theme, CSS-переменные | ✅ |
+| 1 | 1.8 | Структура роутов | Файлы страниц-заглушек | ✅ |
 | 2 | 2.1 | Регистрация | API + форма с валидацией | ⬜ |
 | 2 | 2.2 | Вход | Страница логина через NextAuth | ⬜ |
 | 2 | 2.3 | Middleware | Защита роутов от неавторизованных | ⬜ |
@@ -1047,7 +1091,7 @@ DATABASE_URL="postgresql://..."
 
 # NextAuth
 NEXTAUTH_SECRET="..."
-NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_URL="http://localhost:3000"   # или порт, на котором реально запущен dev (3001, 3002...)
 
 # Google Gemini AI
 GEMINI_API_KEY="..."
@@ -1062,10 +1106,10 @@ UPLOADTHING_APP_ID="..."
 ## Полезные команды на каждый день
 
 ```bash
-pnpm dev          # Запуск dev-сервера
-npx prisma studio # Визуальный редактор БД
-npx prisma db push   # Применить изменения схемы
-npx prisma generate  # Перегенерировать Prisma Client
-pnpm build        # Production-сборка
-pnpm lint         # Проверка ESLint
+pnpm dev                        # Запуск dev-сервера
+proxychains4 npx prisma studio  # Визуальный редактор БД
+proxychains4 npx prisma db push    # Применить изменения схемы
+proxychains4 npx prisma generate   # Перегенерировать Prisma Client
+pnpm build                      # Production-сборка
+pnpm lint                       # Проверка ESLint
 ```
