@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { signIn } from "next-auth/react"
+import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,6 +17,8 @@ const schema = z.object({
 })
 
 export default function LoginPage() {
+  const searchParams = useSearchParams()
+  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard"
   const [error, setError] = useState("")
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({ resolver: zodResolver(schema) })
 
@@ -23,7 +26,7 @@ export default function LoginPage() {
     setError("")
     const r = await signIn("credentials", { username: data.username, password: data.password, redirect: false })
     if (r?.error) { setError("Неверный логин или пароль"); return }
-    window.location.href = "/dashboard"
+    window.location.href = callbackUrl
   }
 
   return (

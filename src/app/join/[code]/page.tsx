@@ -1,6 +1,8 @@
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
+import Link from "next/link"
+import { PasswordForm } from "@/components/password-form"
 
 export default async function JoinByCodePage({ params }: { params: Promise<{ code: string }> }) {
   const session = await auth()
@@ -21,14 +23,26 @@ export default async function JoinByCodePage({ params }: { params: Promise<{ cod
     )
   }
 
-  // Проверить, не участник ли уже
   const existing = await prisma.roomMember.findUnique({
     where: { roomId_userId: { roomId: room.id, userId: session.user.id } },
   })
+  if (existing) redirect(`/room/${room.id}`)
 
-  if (!existing) {
+  // Без пароля — авто-присоединение
+  if (!room.passwordHash) {
     await prisma.roomMember.create({ data: { roomId: room.id, userId: session.user.id } })
+    redirect(`/room/${room.id}`)
   }
 
-  redirect(`/room/${room.id}`)
+  // С паролем — форма
+  return (
+    <div className="flex flex-col h-full">
+      <header className="px-4 pt-4 pb-2 shrink-0">
+        <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">← Назад</Link>
+      </header>
+      <main className="flex-1 flex items-center justify-center px-4">
+        <PasswordForm code={code} />
+      </main>
+    </div>
+  )
 }
