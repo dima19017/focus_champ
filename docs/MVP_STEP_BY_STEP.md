@@ -1,3 +1,5 @@
+Continue  opencode -s ses_182206f2effephzrdoVPRKaf4I
+
 # Focus Champ MVP — Пошаговый план реализации
 
 > **Стек**: Next.js 15 (App Router) + TypeScript + Prisma + PostgreSQL + NextAuth.js + TailwindCSS + shadcn/ui
@@ -480,6 +482,25 @@ export const { GET, POST } = handlers
 @theme inline {
   --font-sans: var(--font-inter);
   --font-heading: var(--font-inter);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
 }
 
 :root,
@@ -503,6 +524,17 @@ export const { GET, POST } = handlers
   --input: rgba(255, 255, 255, 0.1);
   --ring: #7C4DFF;
   --radius: 0.625rem;
+
+  /* Кастомные переменные дизайн-системы */
+  --bg-primary: #0B1020;
+  --bg-secondary: #131B33;
+  --surface: #1A2444;
+  --primary-brand: #7C4DFF;
+  --primary-hover: #9067FF;
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+  --gold: #FBBF24;
 }
 
 @layer base {
@@ -512,7 +544,7 @@ export const { GET, POST } = handlers
 }
 ```
 
-> **Объяснение**: `components.json` (`"cssVariables": true`) говорит shadcn использовать CSS-переменные для цветов. Мы переопределяем их под наш дизайн. `color-scheme: dark` говорит браузеру рисовать скроллбары и инпуты в тёмной теме.
+> **Объяснение**: `@theme inline` маппит CSS-переменные в Tailwind-утилиты (`bg-background`, `border-border`, `text-foreground`). Без этого Tailwind v4 не знает, что `border-border` ссылается на `--border`. `color-scheme: dark` — браузер рисует скроллбары в тёмной теме.
 
 ### Шаг 1.8 — Базовая структура роутов
 
