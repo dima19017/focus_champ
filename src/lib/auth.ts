@@ -1,11 +1,9 @@
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
-import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
   providers: [
     Credentials({
@@ -14,11 +12,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Пароль", type: "password" },
       },
       async authorize(credentials) {
-        // check user, verify password
+        const { username, password } = credentials as { username: string; password: string }
+        if (!username || !password) return null
+        const user = await prisma.user.findUnique({ where: { username } })
+        if (!user) return null
+        const valid = await bcrypt.compare(password, user.passwordHash)
+        if (!valid) return null
+        return { id: user.id, name: user.displayName || user.username, email: `${user.username}@focus-champ.local` }
       },
     }),
   ],
-  pages: {
-    signIn: "/login",
-  },
+  pages: { signIn: "/login" },
 })
