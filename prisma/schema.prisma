@@ -17,6 +17,7 @@ model User {
   username     String   @unique
   passwordHash String
   displayName  String?
+  outfit       String   @default("{\"color\":\"#7C4DFF\"}")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

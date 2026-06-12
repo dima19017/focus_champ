@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
+import { parseOutfit } from "@/lib/outfit"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -29,12 +30,14 @@ async function getRooms(userId: string) {
 export default async function DashboardPage() {
   const session = await auth()
   if (!session?.user?.id) redirect("/login")
+  const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { outfit: true } })
+  const outfit = parseOutfit(user?.outfit || "{}")
   const rooms = await getRooms(session.user.id)
 
   return (
     <div className="flex flex-col h-full">
       <header className="flex items-center px-4 pt-4 pb-2 shrink-0">
-        <MiniCharacter />
+        <MiniCharacter color={outfit.color} />
         <div className="ml-2">
           <h1 className="text-lg font-bold">Привет, {session.user.name || "Игрок"}!</h1>
           <p className="text-xs text-muted-foreground">Уровень 1</p>
