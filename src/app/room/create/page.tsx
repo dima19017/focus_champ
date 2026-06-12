@@ -10,6 +10,7 @@ import Link from "next/link"
 export default function CreateRoomPage() {
   const router = useRouter()
   const [name, setName] = useState("")
+  const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
@@ -21,7 +22,7 @@ export default function CreateRoomPage() {
     const res = await fetch("/api/rooms", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name.trim() }),
+      body: JSON.stringify({ name: name.trim(), password: password || undefined }),
     })
     const json = await res.json()
     setLoading(false)
@@ -43,6 +44,7 @@ export default function CreateRoomPage() {
           <CardContent>
             <form onSubmit={onSubmit} className="space-y-4">
               <Input placeholder="Название комнаты" value={name} onChange={(e) => setName(e.target.value)} maxLength={50} />
+              <Input type="password" placeholder="Пароль (необязательно)" value={password} onChange={(e) => setPassword(e.target.value)} />
               {error && <p className="text-sm text-destructive text-center">{error}</p>}
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Создаём..." : "Создать комнату"}
