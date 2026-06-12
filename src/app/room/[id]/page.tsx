@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { StaticCharacter } from "@/components/static-character"
-import { Copy, Check, Trash2 } from "lucide-react"
+import { Copy, Check, Trash2, LogOut, X } from "lucide-react"
 
 type RoomData = {
   id: string; name: string; joinCode: string; currentDay: number
@@ -21,6 +21,11 @@ export default function RoomPage() {
   const [error, setError] = useState("")
   const [copied, setCopied] = useState<"link" | "code" | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [myId, setMyId] = useState("")
+
+  useEffect(() => {
+    fetch("/api/auth/session").then(r => r.json()).then(s => setMyId(s?.user?.id || ""))
+  }, [])
 
   const fetchRoom = useCallback(async () => {
     const r = await fetch(`/api/rooms/${id}`)
@@ -30,12 +35,7 @@ export default function RoomPage() {
   }, [id])
 
   useEffect(() => { fetchRoom() }, [fetchRoom])
-
-  // Polling — обновление каждые 3 секунды
-  useEffect(() => {
-    const i = setInterval(fetchRoom, 3000)
-    return () => clearInterval(i)
-  }, [fetchRoom])
+  useEffect(() => { const i = setInterval(fetchRoom, 3000); return () => clearInterval(i) }, [fetchRoom])
 
   const copy = async (text: string, type: "link" | "code") => {
     await navigator.clipboard.writeText(text)
@@ -51,6 +51,19 @@ export default function RoomPage() {
     else { setDeleting(false); setError("Не удалось удалить") }
   }
 
+  const leaveRoom = async () => {
+    if (!confirm("Покинуть комнату?")) return
+    const r = await fetch(`/api/rooms/${id}/leave`, { method: "DELETE" })
+    if (r.ok) router.push("/dashboard")
+    else setError("Не удалось выйти")
+  }
+
+  const kickMember = async (userId: string, name: string) => {
+    if (!confirm(`Удалить ${name} из комнаты?`)) return
+    await fetch(`/api/rooms/${id}/members/${userId}`, { method: "DELETE" })
+    fetchRoom()
+  }
+
   if (error && !room) return <div className="flex h-full items-center justify-center"><p className="text-destructive">{error}</p></div>
   if (!room) return <div className="flex h-full items-center justify-center"><p className="text-muted-foreground">Загрузка...</p></div>
 
@@ -58,11 +71,16 @@ export default function RoomPage() {
     <div className="flex flex-col h-full">
       <header className="flex items-center justify-between px-4 pt-4 pb-2 shrink-0">
         <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">← Назад</Link>
-        {room.isCreator && (
-          <Button variant="ghost" size="sm" onClick={deleteRoom} disabled={deleting} className="text-destructive hover:text-destructive">
-            <Trash2 className="h-4 w-4" />
+        <div className="flex gap-1">
+          <Button variant="ghost" size="sm" onClick={leaveRoom} title="Покинуть комнату">
+            <LogOut className="h-4 w-4" />
           </Button>
-        )}
+          {room.isCreator && (
+            <Button variant="ghost" size="sm" onClick={deleteRoom} disabled={deleting} className="text-destructive hover:text-destructive">
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </header>
 
       <main className="flex-1 px-4 overflow-y-auto">
@@ -97,12 +115,21 @@ export default function RoomPage() {
           {room.members.map((m) => (
             <div key={m.id} className="flex items-center gap-3 p-2 rounded-lg bg-secondary/30">
               <StaticCharacter color={m.outfit.color} />
-              <div>
+              <div className="flex-1">
                 <span className="text-sm">{m.displayName || m.username}</span>
                 {m.id === room.members[0]?.id && (
                   <span className="text-xs text-muted-foreground ml-1">(создатель)</span>
                 )}
+                {m.id === myId && (
+                  <span className="text-xs text-primary ml-1">(вы)</span>
+                )}
               </div>
+              {room.isCreator && m.id !== myId && (
+                <button onClick={() => kickMember(m.id, m.displayName || m.username)}
+                  className="text-muted-foreground hover:text-destructive transition-colors">
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
           ))}
         </div>
