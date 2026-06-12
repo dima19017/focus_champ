@@ -5,6 +5,17 @@ import bcrypt from "bcryptjs"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
+  secret: process.env.NEXTAUTH_SECRET,
+  callbacks: {
+    jwt({ token, user }) {
+      if (user) token.id = user.id
+      return token
+    },
+    session({ session, token }) {
+      if (session.user) (session.user as any).id = token.id as string
+      return session
+    },
+  },
   providers: [
     Credentials({
       credentials: {

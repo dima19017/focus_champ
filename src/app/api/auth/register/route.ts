@@ -10,14 +10,22 @@ const schema = z.object({
 
 export async function POST(req: Request) {
   try {
-    const { username, password } = schema.parse(await req.json())
+    const body = await req.json()
+    const parsed = schema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 })
+    }
+    const { username, password } = parsed.data
+
     const exists = await prisma.user.findUnique({ where: { username } })
     if (exists) return NextResponse.json({ error: "Логин занят" }, { status: 409 })
+
     const hash = await bcrypt.hash(password, 10)
     await prisma.user.create({ data: { username, passwordHash: hash, displayName: username } })
     return NextResponse.json({ success: true }, { status: 201 })
-  } catch (e: any) {
-    if (e instanceof z.ZodError) return NextResponse.json({ error: e.errors[0].message }, { status: 400 })
-    return NextResponse.json({ error: "Ошибка сервера" }, { status: 500 })
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Ошибка сервера"
+    console.error("REGISTER ERROR:", msg)
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
